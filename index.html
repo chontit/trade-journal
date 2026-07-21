@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>₿ Trade Journal — BTC / Gold</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
+
+<!-- ================= PWA ================= -->
+<link rel="manifest" href="./manifest.json" />
+<meta name="theme-color" content="#0a0e14" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Trade Journal" />
+<meta name="application-name" content="Trade Journal" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
+
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+<link rel="stylesheet" href="styles.css?v=19" />
+</head>
+<body>
+<div class="app">
+  <!-- ================= HEADER ================= -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo"><img src="./logo.png" alt="Trade Journal logo" /></span>
+      <div>
+        <h1>Trade Journal</h1>
+        <span class="sub">BTC · Gold · Other — Portfolio P&amp;L Analytics &amp; Trade Journal</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="ccy-toggle" id="ccyToggle" title="สลับสกุลเงินแสดงผล">
+        <button data-ccy="THB" class="active">THB</button>
+        <button data-ccy="USD">USD</button>
+      </div>
+      <button id="themeBtn" class="btn ghost icon" title="สลับธีม Light/Dark">🌙</button>
+      <button id="refreshBtn" class="btn ghost" title="ดึงราคาล่าสุด">⟳ ราคา</button>
+    </div>
+  </header>
+
+  <!-- ================= PRICE TICKER ================= -->
+  <div class="ticker" id="ticker">
+    <div class="tick">
+      <span class="tick-label">BTC</span>
+      <span class="tick-val" id="tickBTC">—</span>
+    </div>
+    <div class="tick">
+      <span class="tick-label">GOLD (oz)</span>
+      <span class="tick-val" id="tickGOLD">—</span>
+    </div>
+    <div class="tick">
+      <span class="tick-label">USD/THB</span>
+      <span class="tick-val" id="tickFX">—</span>
+    </div>
+    <div class="tick muted">
+      <span class="tick-label">อัปเดต</span>
+      <span class="tick-val" id="tickTime">—</span>
+    </div>
+  </div>
+
+  <!-- ================= PORTFOLIO SUMMARY ================= -->
+  <section class="summary" id="summary">
+    <div class="kpi">
+      <span class="kpi-label">มูลค่าพอร์ต (Market Value)</span>
+      <span class="kpi-val" id="kpiMV">—</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">ต้นทุนที่ถืออยู่ (Cost Basis)</span>
+      <span class="kpi-val" id="kpiCost">—</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Unrealized P&amp;L</span>
+      <span class="kpi-val" id="kpiUnreal">—</span>
+      <div class="kpi-fee" title="ประมาณการค่าธรรมเนียมเมื่อปิดสถานะทั้งหมด คิดเป็น % ของมูลค่าตลาด">
+        <label class="kpi-fee-toggle">
+          <input type="checkbox" id="feeToggle" />
+          <span>ประมาณการค่าธรรมเนียมปิดสถานะ (Estimated Exit Fee)</span>
+        </label>
+        <div class="kpi-fee-row">
+          <input type="number" id="feePct" step="0.01" min="0" placeholder="0.25" />
+          <span class="kpi-fee-unit">%</span>
+        </div>
+      </div>
+      <span class="kpi-sub" id="feeNote"></span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Realized P&amp;L</span>
+      <span class="kpi-val" id="kpiReal">—</span>
+    </div>
+    <div class="kpi total">
+      <span class="kpi-label">Total P&amp;L (Net)</span>
+      <span class="kpi-val" id="kpiTotal">—</span>
+      <span class="kpi-sub" id="kpiRoi"></span>
+    </div>
+  </section>
+
+  <!-- ================= CHARTS ================= -->
+  <section class="charts">
+    <div class="card chart-card">
+      <div class="card-head chart-head">
+        <h2>Equity Curve — Realized P&amp;L สะสม</h2>
+        <div class="seg small" id="rangeSeg">
+          <button data-range="7D">7D</button>
+          <button data-range="30D">30D</button>
+          <button data-range="90D">90D</button>
+          <button data-range="ALL" class="active">ALL</button>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="pnlChart"></canvas></div>
+    </div>
+    <div class="card chart-card small">
+      <div class="card-head"><h2>สัดส่วนสินทรัพย์</h2></div>
+      <div class="chart-box">
+        <canvas id="allocChart"></canvas>
+        <div class="chart-empty" id="allocEmpty">ยังไม่มีสินทรัพย์ในพอร์ต</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STATS STRIP ================= -->
+  <section class="stats" id="stats"></section>
+
+  <div class="grid">
+    <!-- ================= ENTRY FORM ================= -->
+    <section class="card form-card">
+      <div class="card-head"><h2 id="formTitle">บันทึกรายการเทรดใหม่</h2></div>
+      <form id="tradeForm" autocomplete="off">
+        <input type="hidden" id="editId" />
+
+        <div class="row">
+          <label>ประเภท</label>
+          <div class="seg" id="sideSeg">
+            <button type="button" data-side="buy" class="active">ซื้อ (Buy)</button>
+            <button type="button" data-side="sell">ขาย (Sell)</button>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label for="fDate">วันที่ / เวลา</label>
+            <input type="datetime-local" id="fDate" required />
+          </div>
+          <div>
+            <label for="fAsset">สินทรัพย์</label>
+            <select id="fAsset">
+              <option value="BTC" selected>Bitcoin (BTC)</option>
+              <option value="GOLD">ทองคำ (Gold)</option>
+              <option value="OTHER">อื่น ๆ</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" id="otherNameRow" style="display:none">
+          <label for="fOther">ชื่อสินทรัพย์อื่น</label>
+          <input type="text" id="fOther" placeholder="เช่น ETH, XAU, หุ้น ..." />
+        </div>
+
+        <div class="row two">
+          <div>
+            <label for="fCcy">สกุลเงินของรายการ</label>
+            <select id="fCcy">
+              <option value="THB">THB</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+          <div>
+            <label for="fPrice">
+              ราคาสินทรัพย์ / หน่วย
+              <button type="button" id="usePriceBtn" class="mini" title="ใส่ราคาตลาดปัจจุบัน">ใช้ราคาตลาด</button>
+            </label>
+            <input type="number" id="fPrice" step="any" min="0" placeholder="0.00" />
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label for="fCost">ต้นทุน (มูลค่าเงินลงทุนของรายการ)</label>
+            <input type="number" id="fCost" step="any" min="0" placeholder="0.00" />
+          </div>
+          <div>
+            <label for="fQty">จำนวนสินทรัพย์</label>
+            <input type="number" id="fQty" step="any" min="0" placeholder="0.00000000" />
+          </div>
+        </div>
+        <p class="hint" id="calcHint">ระบบใช้มูลค่าต้นทุนเป็นค่าคงที่: เมื่อปรับ “ราคาต่อหน่วย” ระบบจะคำนวณจำนวนสินทรัพย์ใหม่ให้อัตโนมัติ และเมื่อปรับ “จำนวนสินทรัพย์” ระบบจะคำนวณราคาต่อหน่วยใหม่ให้ โดยคงมูลค่าต้นทุนเดิมไว้เสมอ</p>
+
+        <div class="row two">
+          <div>
+            <label for="fFee">ค่าธรรมเนียม (ไม่บังคับ)</label>
+            <input type="number" id="fFee" step="any" min="0" placeholder="0.00" />
+          </div>
+          <div>
+            <label for="fNote">โน้ต</label>
+            <input type="text" id="fNote" placeholder="เหตุผล / setup ..." />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="submitBtn">บันทึกรายการเทรด</button>
+          <button type="button" class="btn ghost" id="cancelEdit" style="display:none">ยกเลิก</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ================= HISTORY ================= -->
+    <section class="card history-card">
+      <div class="card-head history-head">
+        <h2>ประวัติรายการ</h2>
+        <div class="filters">
+          <div class="seg small" id="filterSeg">
+            <button data-filter="all" class="active">ทั้งหมด</button>
+            <button data-filter="buy">ซื้อ</button>
+            <button data-filter="sell">ขาย</button>
+          </div>
+          <input type="search" id="searchBox" placeholder="ค้นหา..." />
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="txTable">
+          <thead>
+            <tr>
+              <th>วันที่/เวลา</th>
+              <th>ประเภท</th>
+              <th>สินทรัพย์</th>
+              <th class="num">ราคา</th>
+              <th class="num">จำนวน</th>
+              <th class="num">ต้นทุน</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="txBody"></tbody>
+        </table>
+        <div class="empty" id="emptyState">ยังไม่มีรายการเทรด — เริ่มบันทึกรายการเทรดแรกของคุณ</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= DATA TOOLS ================= -->
+  <footer class="datatools">
+    <div class="dt-left">
+      <button class="btn ghost" id="exportBtn">⭱ Export ข้อมูล (.json)</button>
+      <button class="btn ghost" id="csvBtn">⭱ Export CSV</button>
+      <label class="btn ghost" for="importFile">⭳ Import ข้อมูล</label>
+      <input type="file" id="importFile" accept="application/json,.json" hidden />
+    </div>
+    <div class="dt-right">
+      <label class="auto"><input type="checkbox" id="autoRefresh" /> รีเฟรชราคาอัตโนมัติ (60s)</label>
+      <button class="btn danger ghost" id="clearBtn">ล้างข้อมูลทั้งหมด</button>
+    </div>
+  </footer>
+  <p class="disclaimer">ข้อมูลถูกเก็บในเครื่องนี้ (localStorage) เท่านั้น — ไม่ได้ส่งขึ้นเซิร์ฟเวอร์ · ใช้เพื่อบันทึกส่วนตัว ไม่ใช่คำแนะนำการลงทุน · P&amp;L ใช้วิธี FIFO</p>
+
+  <footer class="site-footer">
+    <p>© 2026 Chollatis Bitcoiner. | Don't Trust, Verify.</p>
+    <p>Powered by Claude AI | Don't Trust, Verify ⚡</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+<script src="app.js?v=19"></script>
+
+<!-- ================= Service Worker registration ================= -->
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js")
+        .then((reg) => console.info("[TradeJournal] Service Worker registered:", reg.scope))
+        .catch((err) => console.warn("[TradeJournal] Service Worker registration failed:", err));
+    });
+  }
+</script>
+</body>
+</html>

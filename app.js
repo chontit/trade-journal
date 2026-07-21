@@ -611,6 +611,25 @@
     return { ok: true, val: v };
   }
 
+  // จำนวนคงเหลือสุทธิของสินทรัพย์ในพอร์ต (Σซื้อ − Σขาย) ไม่นับรายการที่กำลังแก้ไข
+  function availableQtyFor(asset, other, excludeId) {
+    let net = 0;
+    for (const t of state.txs) {
+      if (excludeId && t.id === excludeId) continue;
+      const match = asset === "OTHER"
+        ? (t.asset === "OTHER" && (t.other || "") === (other || ""))
+        : (t.asset === asset);
+      if (!match) continue;
+      net += (t.side === "sell" ? -1 : 1) * (+t.qty || 0);
+    }
+    return net;
+  }
+  function assetLabelOf(asset, other) {
+    if (asset === "OTHER") return other || "สินทรัพย์อื่น";
+    if (asset === "GOLD") return "ทองคำ (GOLD)";
+    return "Bitcoin (BTC)";
+  }
+
   function submitForm(e) {
     e.preventDefault();
 
@@ -641,6 +660,28 @@
     if (!el.fDate.value) {
       alert("กรุณาระบุวันที่และเวลาของรายการเทรด");
       return;
+    }
+
+    // ---------- ตรวจการขายเกินจำนวนที่ถือจริงในพอร์ต ----------
+    if (pref.side === "sell") {
+      const asset = el.fAsset.value;
+      const other = asset === "OTHER" ? el.fOther.value.trim() : "";
+      const available = availableQtyFor(asset, other, el.editId.value);
+      const maxSell = Math.max(available, 0);
+      if (qty > available + 1e-8) {
+        const label = assetLabelOf(asset, other);
+        const proceed = confirm(
+          "⚠️ ขายเกินจำนวนที่มีในพอร์ต\n\n" +
+          "สินทรัพย์: " + label + "\n" +
+          "มีในพอร์ตขณะนี้: " + fmtQty(maxSell) + " หน่วย\n" +
+          "ขายได้สูงสุด: " + fmtQty(maxSell) + " หน่วย\n" +
+          "คุณกำลังจะขาย: " + fmtQty(qty) + " หน่วย\n" +
+          "ส่วนที่เกิน: " + fmtQty(qty - maxSell) + " หน่วย\n\n" +
+          "กด “ตกลง” เพื่อบันทึกต่อ (ระบบจะคำนวณกำไรเฉพาะส่วนที่มีจริง)\n" +
+          "กด “ยกเลิก” เพื่อกลับไปแก้ไขจำนวน"
+        );
+        if (!proceed) return;
+      }
     }
 
     const tx = {

@@ -325,14 +325,27 @@
     for (const s of series) { const step = s.cum - prev; if (step > 0) wins++; else if (step < 0) losses++; prev = s.cum; }
     const winRate = (wins + losses) ? (wins / (wins + losses) * 100).toFixed(0) + "%" : "—";
     const btcPos = positions["BTC"];
+    const goldPos = positions["GOLD"];
     const stats = [
       ["จำนวนรายการเทรดทั้งหมด", state.txs.length],
       ["ซื้อ / ขาย", buys + " / " + sells],
       ["Win rate", winRate],
+      ["สินทรัพย์ในพอร์ต", Object.keys(positions).length],
       ["BTC ที่ถือ", btcPos ? fmtQty(btcPos.qty) : "0"],
       ["ต้นทุนเฉลี่ย BTC", btcPos ? fmt(btcPos.cost / btcPos.qty, dc) : "—"],
-      ["สินทรัพย์", Object.keys(positions).length],
+      ["ทองคำที่ถือ (GOLD oz)", goldPos ? fmtQty(goldPos.qty) : "0"],
+      ["ต้นทุนเฉลี่ย GOLD", goldPos ? fmt(goldPos.cost / goldPos.qty, dc) : "—"],
     ];
+
+    // สินทรัพย์ "อื่น ๆ" แบบ dynamic — แสดงเฉพาะที่มีถืออยู่จริงในพอร์ต (แยกตามชื่อ)
+    Object.keys(positions)
+      .filter(k => k.startsWith("OTHER:"))
+      .forEach(k => {
+        const p = positions[k];
+        stats.push([p.label + " ที่ถือ", fmtQty(p.qty)]);
+        stats.push(["ต้นทุนเฉลี่ย " + p.label, fmt(p.cost / p.qty, dc)]);
+      });
+
     el.stats.innerHTML = stats.map(([l, v]) =>
       `<div class="stat"><div class="s-label">${l}</div><div class="s-val">${v}</div></div>`).join("");
   }

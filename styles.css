@@ -102,7 +102,7 @@ body{
   color:var(--muted);font-size:13px;pointer-events:none;text-align:center}
 
 /* ---- Stats strip ---- */
-.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
 .stat{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .stat .s-label{color:var(--muted);font-size:11px}
 .stat .s-val{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}

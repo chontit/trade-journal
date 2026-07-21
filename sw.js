@@ -7,7 +7,7 @@
    เปลี่ยน CACHE_VERSION เมื่ออัปเดตไฟล์ เพื่อล้าง cache เก่าอัตโนมัติ
    ========================================================= */
 
-const CACHE_VERSION = "v8";
+const CACHE_VERSION = "v10";
 const CACHE_NAME = `trade-journal-${CACHE_VERSION}`;
 
 // ไฟล์หลักที่ต้อง cache ไว้ให้เปิด offline ได้ตั้งแต่ครั้งแรก

@@ -1,13 +1,14 @@
 /* =========================================================
    Trade Journal — Service Worker (PWA offline support)
    กลยุทธ์:
-   - Navigation (HTML)        -> Network-first, fallback เป็น shell ที่ cache ไว้ (ใช้งาน offline ได้)
-   - CDN ภายนอก (cdnjs)       -> Cache-first (ไลบรารี versioned/immutable)
+   - Navigation (HTML)          -> Network-first, fallback เป็น shell ที่ cache ไว้ (ใช้งาน offline ได้)
+   - ไลบรารี cdnjs               -> Cache-first (versioned/immutable)
+   - API ราคา/FX (cross-origin) -> ไม่ intercept ปล่อยไป network สดเสมอ (ราคาต้องอัปเดต!)
    - ไฟล์ static เดียวกัน (origin) -> Stale-While-Revalidate
    เปลี่ยน CACHE_VERSION เมื่ออัปเดตไฟล์ เพื่อล้าง cache เก่าอัตโนมัติ
    ========================================================= */
 
-const CACHE_VERSION = "v10";
+const CACHE_VERSION = "v11";
 const CACHE_NAME = `trade-journal-${CACHE_VERSION}`;
 
 // ไฟล์หลักที่ต้อง cache ไว้ให้เปิด offline ได้ตั้งแต่ครั้งแรก
@@ -60,13 +61,19 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 2) CDN ภายนอก -> Cache-first
-  if (url.origin !== self.location.origin) {
+  // 2) ไลบรารีจาก cdnjs เท่านั้น -> Cache-first (ไฟล์ตายตัว โหลดครั้งเดียว)
+  if (url.hostname === "cdnjs.cloudflare.com") {
     event.respondWith(cacheFirst(req));
     return;
   }
 
-  // 3) static ภายใน origin -> Stale-While-Revalidate
+  // 3) cross-origin อื่น ๆ = API ราคา/FX -> ไม่ intercept เลย
+  //    ปล่อยให้ browser ยิง network สดทุกครั้ง (แก้ปัญหาราคาไม่อัปเดตบน PWA ที่ติดตั้งไว้)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // 4) static ภายใน origin -> Stale-While-Revalidate
   event.respondWith(staleWhileRevalidate(req));
 });
 
